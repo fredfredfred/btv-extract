@@ -112,7 +112,7 @@ data class CsvGame(
 }
 
 val homeDorfen = setOf("Herren", "Damen", "Knaben", "Mädchen", "Dunlop", "Bambini", "Junioren", "Juniorinnen")
-val stopWords = setOf("Spielort:", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So.", "nu.Dokument")
+val stopWords = setOf("Spielort:", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So.", "nu.Dokument", "» ursprünglich")
 val dorfenTeamOneLiner = setOf("Herren 70 (4er)", "Dunlop Kleinfeld U9 (4er)", "Knaben 15 (4er)", "Damen 40")
 val localDatePattern = DateTimeFormatter.ofPattern("dd.MM.yyyy")
 val localTimePattern = DateTimeFormatter.ofPattern("HH:mm")
@@ -130,7 +130,9 @@ fun parseGamesBtv() {
     val sections = spielplan.split(sectionMarker)
 
     val timePattern = Regex("""\d{2}:\d{2}""")
-    val datePattern = Regex("""\d{2}\.\d{2}\.\d{4}""")
+    // val datePattern = Regex("""\d{2}\.\d{2}\.\d{4}""")
+    // find date pattern, which does not start with word 'urprünglich'
+    val datePattern = Regex("""(?<!ursprünglich )\d{2}\.\d{2}\.\d{4}""")
     val leaguePattern = Regex("""(S|LL)\d{1}|RLSO""")
     val teamPattern = Regex("""([A-ZÄÖÜ][- .a-zA-Z_0-9()äöüßÄÖÜ]*)\n""")
 
@@ -166,7 +168,7 @@ fun parseGamesBtv() {
             val leagues = leaguePattern.findAll(daySection.section)
 
             if (times.count() == 0 || leagues.count() == 0) {
-                println("SKIP - No times or leagues found for day ${daySection.day} in section ${daySection.section}")
+                println("SKIP - No times or leagues found for day ${daySection.day} in day section ${daySection.section}")
                 return@flatMap emptySequence<Game>()
             }
 
@@ -220,7 +222,7 @@ fun parseGamesBtv() {
 
 fun writeCsv(file: File, calendar: CsvGoogleCalendar) {
     file.printWriter().use { out ->
-        out.println(calendar.header.joinToString (calendar.separator))
+        out.println(calendar.header.joinToString(calendar.separator))
         calendar.matches.forEach {
             out.println(it.toCsv(calendar.separator))
         }
