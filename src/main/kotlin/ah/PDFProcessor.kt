@@ -123,7 +123,7 @@ fun main() {
 }
 
 fun parseGamesBtv() {
-    val inputFile = File("data/tc-dorfen-2024.pdf")
+    val inputFile = File("data/2024-05-04-tc-dorfen.pdf")
     val spielplan = PDFProcessor().processPdf(inputFile)
 
     val sectionMarker = "Termin Liga Heimmannschaft Gastmannschaft Bem. Erg."
@@ -213,7 +213,8 @@ fun parseGamesBtv() {
         )
     }
 
-    val outputFile = File(inputFile.nameWithoutExtension + ".csv")
+    // create outfile as sibling of input file with csv extension
+    val outputFile = File(inputFile.parent, inputFile.nameWithoutExtension + ".csv")
     writeCsv(outputFile, CsvGoogleCalendar(matches = csvGames))
 }
 
