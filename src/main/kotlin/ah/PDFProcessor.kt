@@ -25,8 +25,8 @@ class PDFProcessor {
         tesseract.setOcrEngineMode(1)
     }
 
-    fun processPdf(sourcePdfPath: String): String {
-        val document = Loader.loadPDF(File(sourcePdfPath))
+    fun processPdf(sourceFile: File): String {
+        val document = Loader.loadPDF(sourceFile)
 
         document.use {
             val pages = it.pages
@@ -90,7 +90,7 @@ data class CsvGoogleCalendar(
         "Description",
         "Location"
     ),
-    val games: List<CsvGame>,
+    val matches: List<CsvGame>,
     val separator: String = ","
 )
 
@@ -123,7 +123,8 @@ fun main() {
 }
 
 fun parseGamesBtv() {
-    val spielplan = PDFProcessor().processPdf("data/tc-dorfen-2024.pdf")
+    val inputFile = File("data/tc-dorfen-2024.pdf")
+    val spielplan = PDFProcessor().processPdf(inputFile)
 
     val sectionMarker = "Termin Liga Heimmannschaft Gastmannschaft Bem. Erg."
     val sections = spielplan.split(sectionMarker)
@@ -212,13 +213,14 @@ fun parseGamesBtv() {
         )
     }
 
-    writeCsv(File("data/tc-dorfen-2024.csv"), CsvGoogleCalendar(games = csvGames))
+    val outputFile = File(inputFile.nameWithoutExtension + ".csv")
+    writeCsv(outputFile, CsvGoogleCalendar(matches = csvGames))
 }
 
 fun writeCsv(file: File, calendar: CsvGoogleCalendar) {
     file.printWriter().use { out ->
         out.println(calendar.header.joinToString (calendar.separator))
-        calendar.games.forEach {
+        calendar.matches.forEach {
             out.println(it.toCsv(calendar.separator))
         }
     }
