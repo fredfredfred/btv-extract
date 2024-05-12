@@ -125,16 +125,16 @@ fun main() {
 fun parseGamesBtv() {
     val inputFile = File("data/2024-05-04-tc-dorfen.pdf")
     val spielplan = PDFProcessor().processPdf(inputFile)
+    val rawFile = File(inputFile.parent, inputFile.nameWithoutExtension + "-raw.txt")
+    writeRaw(rawFile, spielplan)
 
     val sectionMarker = "Termin Liga Heimmannschaft Gastmannschaft Bem. Erg."
     val sections = spielplan.split(sectionMarker)
 
     val timePattern = Regex("""\d{2}:\d{2}""")
-    // val datePattern = Regex("""\d{2}\.\d{2}\.\d{4}""")
-    // find date pattern, which does not start with word 'urprünglich'
     val datePattern = Regex("""(?<!ursprünglich )\d{2}\.\d{2}\.\d{4}""")
     val leaguePattern = Regex("""(S|LL)\d{1}|RLSO""")
-    val teamPattern = Regex("""([A-ZÄÖÜ][- .a-zA-Z_0-9()äöüßÄÖÜ]*)\n""")
+    val teamPattern = Regex("""([A-ZÄÖÜ][- .a-zA-Z_0-9()äöüßÄÖÜ/]*)\n""")
 
     val games = sections.filter { it.isNotEmpty() }.flatMap { section ->
         val days = datePattern.findAll(section)
@@ -226,6 +226,12 @@ fun writeCsv(file: File, calendar: CsvGoogleCalendar) {
         calendar.matches.forEach {
             out.println(it.toCsv(calendar.separator))
         }
+    }
+}
+
+fun writeRaw(file: File, string: String) {
+    file.printWriter().use { out ->
+        out.println(string)
     }
 }
 
