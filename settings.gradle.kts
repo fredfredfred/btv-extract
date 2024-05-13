@@ -1,2 +1,2 @@
-rootProject.name = "pdf-extract"
+rootProject.name = "btv-extract"
 
