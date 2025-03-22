@@ -12,7 +12,7 @@ object Main {
 
         println("=====================================")
         println("Home teams:")
-        val homeTeams = games.filter {  it.isHome }.map { it.homeTeam }.toSet().toList().sortedBy { it }
+        val homeTeams = games.filter {  it.isHome }.map { it.homeTeam }.toSet().toList().sortedByDescending { it.length }
         homeTeams.forEach { team -> println(team) }
         println("=====================================")
 

@@ -8,8 +8,9 @@ import java.time.format.DateTimeFormatter
 val homeTeamStarters = setOf("Herren", "Damen", "Knaben", "Mädchen", "Dunlop", "Bambini", "Junioren", "Juniorinnen")
 
 object BTVPlanExtractor {
-    private val stopWords =
-        setOf("Spielort:", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So.", "nu.Dokument", "» ursprünglich", " HP ")
+    private val stopWordsAtStart =
+        setOf("Spielort:", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So.", "nu.Dokument", "» ursprünglich")
+    private val stopWorksAfterCleanup = setOf(" HP ")
     private val localDatePattern: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
     private val localTimePattern: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     private val timePattern = Regex("""\d{2}:\d{2}""")
@@ -23,7 +24,7 @@ object BTVPlanExtractor {
         val teamsSection = pdfText.split(spielplanMarker)[0]
 
         return teamsSection.lines()
-            .filter { line ->homeTeamStarters.any { line.contains(it) } }
+            .filter { line -> homeTeamStarters.any { line.contains(it) } }
             .map {
                 if (longLeaguePattern.containsMatchIn(it)) {
                     // one liner like 'Herren 70 (4er) Regionalliga Süd-Ost'
@@ -142,7 +143,7 @@ object BTVPlanExtractor {
             return ""
         }
         val filtered = daySection.lines().filter {
-            it.isNotBlank() && stopWords.none { stopWord -> it.startsWith(stopWord) }
+            it.isNotBlank() && stopWordsAtStart.none { stopWord -> it.startsWith(stopWord) }
         }.joinToString("\n", "", "\n")
 
         val homeTeamNames = homeTeamNamesSet.toList().sortedByDescending { it.length }
@@ -151,7 +152,11 @@ object BTVPlanExtractor {
                 val foundHomeTeam = homeTeamNames.find { line.contains(it) }
                 if (foundHomeTeam != null) {
                     val split = line.split(foundHomeTeam)
-                    listOf(split[0], foundHomeTeam, split[1])
+                    listOf(
+                        split[0],
+                        foundHomeTeam,
+                        split[1]
+                    ).filter { stopWorksAfterCleanup.none { stopWord -> it.startsWith(stopWord) } }
                 } else {
                     listOf(line)
                 }
@@ -159,7 +164,7 @@ object BTVPlanExtractor {
         } else {
             filtered
         }
-
     }
+
 
 }
