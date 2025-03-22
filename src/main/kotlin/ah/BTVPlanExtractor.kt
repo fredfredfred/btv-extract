@@ -27,14 +27,12 @@ object BTVPlanExtractor {
         val leaguePattern = Regex("""(S|LL)\d{1}|RLSO""")
         val teamPattern = Regex("""([A-ZÄÖÜ][- .a-zA-Z_0-9()äöüßÄÖÜ/]*)\n""")
 
-        val games = sections.filter { it.isNotEmpty() }.flatMap { section ->
+        val games = sections.filter { it.isNotEmpty() }.flatMap sectionsMap@ { section ->
             val days = datePattern.findAll(section)
 
-            print("Days: ${days} ")
-
             if (days.count() == 0) {
-                println("SKIP - No days found")
-                return@flatMap emptyList<Game>()
+                println("SKIP - No days found in section ${section.substring(0, 10)} ...")
+                return@sectionsMap emptyList<Game>()
             }
 
             val daySections = days.map { day ->
@@ -56,20 +54,21 @@ object BTVPlanExtractor {
                 DaySection(dayString, cleanSection)
             }
 
-            val games = daySections.flatMap { daySection ->
+            val games = daySections.flatMap daySectionsMap@ { daySection ->
                 val times = timePattern.findAll(daySection.section)
                 val leagues = leaguePattern.findAll(daySection.section)
 
                 if (times.count() == 0 || leagues.count() == 0) {
                     println("SKIP - No times or leagues found for day ${daySection.day} in day section ${daySection.section}")
-                    return@flatMap emptySequence<Game>()
+                    return@daySectionsMap emptySequence<Game>()
                 }
 
                 val teams = teamPattern.findAll(daySection.section.substring(leagues.last().range.last + 1))
 
                 if (teams.count() < 2) {
+                    // check for one liner day section
                     println("SKIP - Teams less than 2: ${teams.count()} ${daySection.section}")
-                    return@flatMap emptySequence<Game>()
+                    return@daySectionsMap emptySequence<Game>()
                 }
 
                 val homeTeams = teams.toList().subList(0, teams.count() / 2)
@@ -79,7 +78,7 @@ object BTVPlanExtractor {
                     println("SKIP - Mismatch in counts times=${times.count()} leagues=${leagues.count()} home=${homeTeams.count()} guest=${guestTeams.count()} teams=${teams.count()}")
                     println("home:" + homeTeams.joinToString("\n") { it.value.trim() })
                     println("guest:" + guestTeams.joinToString { it.value.trim() })
-                    return@flatMap emptySequence<Game>()
+                    return@daySectionsMap emptySequence<Game>()
                 }
 
                 times.mapIndexed { index, time ->
@@ -126,7 +125,7 @@ object BTVPlanExtractor {
         }.joinToString("\n", "", "\n")
 
         return if (filtered.lines().size <= 2) {
-            filtered.lines().flatMap { line ->
+            filtered.lines().flatMap linesMap@ { line ->
                 val foundDorfen = dorfenTeamOneLiner.find { line.contains(it) }
                 if (foundDorfen != null) {
                     val split = line.split(foundDorfen)
