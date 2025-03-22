@@ -2,13 +2,12 @@ package ah
 
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 data class DaySection(
     val day: String,
     val section: String,
 )
-
-val homeTeamNames = setOf("Herren", "Damen", "Knaben", "Mädchen", "Dunlop", "Bambini", "Junioren", "Juniorinnen")
 
 data class Game(
     val day: String,
@@ -16,7 +15,7 @@ data class Game(
     val league: String,
     val homeTeam: String,
     val guestTeam: String,
-    val isHome: Boolean = homeTeamNames.any { homeTeam.contains(it) },
+    val isHome: Boolean = homeTeamStarters.any { homeTeam.contains(it) },
 )
 
 data class CsvGoogleCalendar(
@@ -34,6 +33,7 @@ data class CsvGoogleCalendar(
     val separator: String = ","
 )
 
+
 data class CsvGame(
     val subject: String,
     val startDate: LocalDate,
@@ -44,6 +44,8 @@ data class CsvGame(
     val description: String,
     val location: String,
 ) {
+    private val usTimePattern: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a")
+
     fun toCsv(separator: String = ","): String {
         val startTimeStr = startTime.format(usTimePattern)
         val endTimeStr = endTime.format(usTimePattern)

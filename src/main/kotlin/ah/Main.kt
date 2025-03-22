@@ -4,10 +4,17 @@ import java.io.File
 import kotlin.system.exitProcess
 
 object Main {
+
     @JvmStatic
     fun main(args: Array<String>) {
         val inputFile = checkFileExists(args)
-        val csvGames = BTVPlanExtractor.parseGamesBtv(inputFile)
+        val (csvGames, games) = BTVPlanExtractor.parseGamesBtv(inputFile)
+
+        println("=====================================")
+        println("Home teams:")
+        val homeTeams = games.filter {  it.isHome }.map { it.homeTeam }.toSet().toList().sortedBy { it }
+        homeTeams.forEach { team -> println(team) }
+        println("=====================================")
 
         val outputFile = File(inputFile.parent, inputFile.nameWithoutExtension + ".csv")
         writeCsv(outputFile, CsvGoogleCalendar(matches = csvGames))

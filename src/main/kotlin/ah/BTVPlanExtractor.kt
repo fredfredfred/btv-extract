@@ -5,29 +5,48 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-val stopWords = setOf("Spielort:", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So.", "nu.Dokument", "» ursprünglich")
-val dorfenTeamOneLiner = setOf("Herren 70 (4er)", "Dunlop Kleinfeld U9 (4er)", "Knaben 15 (4er)", "Damen 40")
-
-val localDatePattern: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
-val localTimePattern: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-val usTimePattern: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a")
+val homeTeamStarters = setOf("Herren", "Damen", "Knaben", "Mädchen", "Dunlop", "Bambini", "Junioren", "Juniorinnen")
 
 object BTVPlanExtractor {
+    private val stopWords =
+        setOf("Spielort:", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So.", "nu.Dokument", "» ursprünglich", " HP ")
+    private val localDatePattern: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+    private val localTimePattern: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    private val timePattern = Regex("""\d{2}:\d{2}""")
+    private val datePattern = Regex("""(?<!ursprünglich )\d{2}\.\d{2}\.\d{4}""")
+    private val leaguePattern = Regex("""(S|LL)\d{1}|RLSO""")
+    private val teamPattern = Regex("""([A-ZÄÖÜ][- .a-zA-Z_0-9()äöüßÄÖÜ/]*)\n""")
+    private val longLeaguePattern = Regex("""(Regionalliga|Landesliga|Südliga)""")
 
-    fun parseGamesBtv(inputFile: File): List<CsvGame> {
-        val spielplan = PDFProcessor.processPdf(inputFile)
+    private fun parseHomeTeamNames(pdfText: String): Set<String> {
+        val spielplanMarker = "Spielplan"
+        val teamsSection = pdfText.split(spielplanMarker)[0]
+
+        return teamsSection.lines()
+            .filter { line ->homeTeamStarters.any { line.contains(it) } }
+            .map {
+                if (longLeaguePattern.containsMatchIn(it)) {
+                    // one liner like 'Herren 70 (4er) Regionalliga Süd-Ost'
+                    val teamNameEndIndex = longLeaguePattern.find(it)?.range?.first
+                    return@map it.substring(0, teamNameEndIndex!!).trim()
+                } else {
+                    // team fills the whole line
+                    return@map it.trim()
+                }
+            }.toSet()
+    }
+
+    fun parseGamesBtv(inputFile: File): Pair<List<CsvGame>, List<Game>> {
+        val pdfText = PDFProcessor.processPdf(inputFile)
         val rawFile = File(inputFile.parent, inputFile.nameWithoutExtension + "-debug.txt")
-        writeRaw(rawFile, spielplan)
+        writeRaw(rawFile, pdfText)
+
+        val homeTeamNames = parseHomeTeamNames(pdfText)
 
         val sectionMarker = "Termin Liga Heimmannschaft Gastmannschaft Bem. Erg."
-        val sections = spielplan.split(sectionMarker)
+        val sections = pdfText.split(sectionMarker)
 
-        val timePattern = Regex("""\d{2}:\d{2}""")
-        val datePattern = Regex("""(?<!ursprünglich )\d{2}\.\d{2}\.\d{4}""")
-        val leaguePattern = Regex("""(S|LL)\d{1}|RLSO""")
-        val teamPattern = Regex("""([A-ZÄÖÜ][- .a-zA-Z_0-9()äöüßÄÖÜ/]*)\n""")
-
-        val games = sections.filter { it.isNotEmpty() }.flatMap sectionsMap@ { section ->
+        val games = sections.filter { it.isNotEmpty() }.flatMap sectionsMap@{ section ->
             val days = datePattern.findAll(section)
 
             if (days.count() == 0) {
@@ -50,11 +69,11 @@ object BTVPlanExtractor {
                     }
                 val daySection = section.substring(daySectionStartIndex, endIndex)
 
-                val cleanSection = cleanupDaySection(daySection)
+                val cleanSection = cleanupDaySection(daySection, homeTeamNames)
                 DaySection(dayString, cleanSection)
             }
 
-            val games = daySections.flatMap daySectionsMap@ { daySection ->
+            val games = daySections.flatMap daySectionsMap@{ daySection ->
                 val times = timePattern.findAll(daySection.section)
                 val leagues = leaguePattern.findAll(daySection.section)
 
@@ -78,6 +97,8 @@ object BTVPlanExtractor {
                     println("SKIP - Mismatch in counts times=${times.count()} leagues=${leagues.count()} home=${homeTeams.count()} guest=${guestTeams.count()} teams=${teams.count()}")
                     println("home:" + homeTeams.joinToString("\n") { it.value.trim() })
                     println("guest:" + guestTeams.joinToString { it.value.trim() })
+                    println("daySection: ${daySection.section}")
+                    println("----------------")
                     return@daySectionsMap emptySequence<Game>()
                 }
 
@@ -106,7 +127,7 @@ object BTVPlanExtractor {
             )
         }
 
-        return csvGames
+        return csvGames to games
     }
 
     private fun writeRaw(file: File, string: String) {
@@ -116,7 +137,7 @@ object BTVPlanExtractor {
     }
 
 
-    private fun cleanupDaySection(daySection: String): String {
+    private fun cleanupDaySection(daySection: String, homeTeamNamesSet: Set<String>): String {
         if (daySection.isBlank()) {
             return ""
         }
@@ -124,12 +145,13 @@ object BTVPlanExtractor {
             it.isNotBlank() && stopWords.none { stopWord -> it.startsWith(stopWord) }
         }.joinToString("\n", "", "\n")
 
+        val homeTeamNames = homeTeamNamesSet.toList().sortedByDescending { it.length }
         return if (filtered.lines().size <= 2) {
-            filtered.lines().flatMap linesMap@ { line ->
-                val foundDorfen = dorfenTeamOneLiner.find { line.contains(it) }
-                if (foundDorfen != null) {
-                    val split = line.split(foundDorfen)
-                    listOf(split[0], foundDorfen, split[1])
+            filtered.lines().flatMap { line ->
+                val foundHomeTeam = homeTeamNames.find { line.contains(it) }
+                if (foundHomeTeam != null) {
+                    val split = line.split(foundHomeTeam)
+                    listOf(split[0], foundHomeTeam, split[1])
                 } else {
                     listOf(line)
                 }
