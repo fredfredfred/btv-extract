@@ -20,10 +20,8 @@ repositories {
 }
 
 dependencies {
-    implementation("net.java.dev.jna:jna:5.14.0")
     implementation("org.apache.pdfbox:pdfbox:3.0.2")
-    implementation("org.bytedeco:tesseract-platform:5.3.4-1.5.10")
-    implementation("net.sourceforge.tess4j:tess4j:5.11.0")
+    implementation("org.slf4j:slf4j-simple:2.0.9")
     testImplementation(kotlin("test"))
 }
 
@@ -36,7 +34,5 @@ tasks.withType<KotlinCompile> {
 }
 
 application {
-    mainClass.set("ah.PDFProcessor")
-    applicationDefaultJvmArgs = listOf("-Djna.library.path=/opt/homebrew/lib", "-Djna.debug_load=true", "-Dtesseract.datapath=/opt/homebrew/share/tessdata", "-Dtesseract.language=deu", "-Dtesseract.ocrEngineMode=1")
+    mainClass.set("ah.Main")
 }
-
