@@ -8,7 +8,11 @@ object Main {
     @JvmStatic
     fun main(args: Array<String>) {
         val inputFile = checkFileExists(args)
-        val (csvGames, games) = BTVPlanExtractor.parseGamesBtv(inputFile)
+        val (csvGames, games) = if (inputFile.extension.equals("csv", ignoreCase = true)) {
+            CSVParser.parseGamesCsv(inputFile)
+        } else {
+            BTVPlanExtractor.parseGamesBtv(inputFile)
+        }
 
         println("=====================================")
         println("Home teams:")
@@ -16,7 +20,8 @@ object Main {
         homeTeams.forEach { team -> println(team) }
         println("=====================================")
 
-        val outputFile = File(inputFile.parent, inputFile.nameWithoutExtension + ".csv")
+        val outputSuffix = if (inputFile.extension.equals("csv", ignoreCase = true)) "-calendar.csv" else ".csv"
+        val outputFile = File(inputFile.parent, inputFile.nameWithoutExtension + outputSuffix)
         writeCsv(outputFile, CsvGoogleCalendar(matches = csvGames))
     }
 

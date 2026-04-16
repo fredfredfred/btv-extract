@@ -19,6 +19,7 @@ The application will:
 - you need a BTV.de account for your club
 - To download the plan for your team, you need to have an account on BTV.de.
 - Login there and go to: Start > Ansicht > Download > Vereinsspielplan.pdf
+- Update 2026: BTV added a csv format so we added a csv parser. 
 
 ## Download Spielplan
 
